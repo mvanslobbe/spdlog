@@ -81,6 +81,31 @@ TEST_CASE("date MM/DD/YY ", "[pattern_formatter]") {
             oss.str());
 }
 
+TEST_CASE("default full formatter", "[pattern_formatter]") {
+    // "%+" caches the date/time per second, so format several messages with one formatter
+    spdlog::pattern_formatter formatter(spdlog::pattern_time_type::utc, "\n");
+    const auto second = spdlog::log_clock::time_point{} + std::chrono::seconds(1759700000);
+    const spdlog::source_loc src{"a/b/myfile.cpp", 123, "func"};
+
+    auto format = [&](std::chrono::milliseconds ms, spdlog::source_loc loc, const char *name,
+                      spdlog::level::level_enum lvl, size_t color_start, size_t color_end) {
+        memory_buf_t formatted;
+        spdlog::details::log_msg msg(second + ms, loc, name, lvl, "some message");
+        formatter.format(msg, formatted);
+        REQUIRE(msg.color_range_start == color_start);
+        REQUIRE(msg.color_range_end == color_end);
+        return std::string(formatted.data(), formatted.size());
+    };
+
+    using std::chrono::milliseconds;
+    REQUIRE(format(milliseconds(7), src, "logger", spdlog::level::info, 36, 40) ==
+            "[2025-10-05 21:33:20.007] [logger] [info] [myfile.cpp:123] some message\n");
+    REQUIRE(format(milliseconds(999), {}, "logger", spdlog::level::warn, 36, 43) ==
+            "[2025-10-05 21:33:20.999] [logger] [warning] some message\n");
+    REQUIRE(format(milliseconds(1050), src, "", spdlog::level::err, 27, 32) ==
+            "[2025-10-05 21:33:21.050] [error] [myfile.cpp:123] some message\n");
+}
+
 // see test_timezone.cpp for actual UTC offset calculation tests
 TEST_CASE("UTC offset", "[pattern_formatter]") {
     using namespace std::chrono_literals;
