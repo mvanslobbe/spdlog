@@ -883,15 +883,17 @@ public:
 
             fmt_helper::pad2(tm_time.tm_sec, cached_datetime_);
             cached_datetime_.push_back('.');
+            fmt_helper::append_string_view("000] ", cached_datetime_);
 
             cache_timestamp_ = secs;
         }
+        auto millis =
+            static_cast<uint32_t>(fmt_helper::time_fraction<milliseconds>(msg.time).count());
+        char *ms = cached_datetime_.data() + cached_datetime_.size() - 5;
+        ms[0] = static_cast<char>('0' + millis / 100);
+        ms[1] = static_cast<char>('0' + millis / 10 % 10);
+        ms[2] = static_cast<char>('0' + millis % 10);
         dest.append(cached_datetime_.begin(), cached_datetime_.end());
-
-        auto millis = fmt_helper::time_fraction<milliseconds>(msg.time);
-        fmt_helper::pad3(static_cast<uint32_t>(millis.count()), dest);
-        dest.push_back(']');
-        dest.push_back(' ');
 
         // append logger name if exists
         if (msg.logger_name.size() > 0) {
